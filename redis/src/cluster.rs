@@ -102,6 +102,7 @@ impl ClusterConnection {
                             host: _,
                             port: _,
                             insecure,
+                            ..
                         } => Some(TlsMode::from_insecure_flag(*insecure)),
                         _ => None,
                     }
@@ -186,13 +187,8 @@ impl ClusterConnection {
         for info in self.initial_nodes.iter() {
             let addr = match info.addr {
                 ConnectionAddr::Tcp(ref host, port) => format!("redis://{}:{}", host, port),
-                ConnectionAddr::TcpTls {
-                    ref host,
-                    port,
-                    insecure,
-                } => {
-                    let tls_mode = TlsMode::from_insecure_flag(insecure);
-                    build_connection_string(host, Some(port), Some(tls_mode))
+                ConnectionAddr::TcpTls { insecure, .. } => {
+                    Some(TlsMode::from_insecure_flag(*insecure))
                 }
                 _ => panic!("No reach."),
             };
