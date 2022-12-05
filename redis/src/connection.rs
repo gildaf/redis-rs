@@ -19,7 +19,7 @@ use crate::types::HashMap;
 use std::os::unix::net::UnixStream;
 
 #[cfg(feature = "tls")]
-use crate::tls::Certificate;
+use crate::tls::{Certificate, Identity, RedisIdentity};
 
 #[cfg(feature = "tls")]
 use native_tls::{TlsConnector, TlsStream};
@@ -68,6 +68,12 @@ pub enum ConnectionAddr {
         /// Added to the root certificates. Used if the CA is not public
         #[cfg(feature = "tls")]
         ca_cert: Option<Certificate>,
+
+        /// TLS Identity
+        ///
+        /// used for client authentication at server
+        #[cfg(feature = "tls")]
+        identity: Option<RedisIdentity>,
     },
     /// Format for this is the path to the unix socket.
     Unix(PathBuf),
@@ -205,6 +211,7 @@ fn url_to_tcp_connection_info(url: url::Url) -> RedisResult<ConnectionInfo> {
                     port,
                     insecure: true,
                     ca_cert: None,
+                    identity: None,
                 },
                 Some(_) => fail!((
                     ErrorKind::InvalidClientConfig,
@@ -215,6 +222,7 @@ fn url_to_tcp_connection_info(url: url::Url) -> RedisResult<ConnectionInfo> {
                     port,
                     insecure: false,
                     ca_cert: None,
+                    identity: None,
                 },
             }
         }
@@ -402,6 +410,7 @@ impl ActualConnection {
                 port,
                 insecure,
                 ref ca_cert,
+                identity: ref client_identity,
             } => {
                 let tls_connector = if insecure {
                     TlsConnector::builder()
@@ -413,6 +422,10 @@ impl ActualConnection {
                     let mut builder = TlsConnector::builder();
                     if let Some(ca_cert) = ca_cert {
                         builder.add_root_certificate(ca_cert.0.clone());
+                    }
+                    if let Some(ident) = client_identity {
+                        let id = Identity::from_pkcs8(&*ident.cert_der, &*ident.key)?;
+                        builder.identity(id.0);
                     }
                     builder.build()?
                 };

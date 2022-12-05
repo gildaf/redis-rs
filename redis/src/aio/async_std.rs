@@ -10,7 +10,7 @@ use std::{
 
 use crate::aio::{AsyncStream, RedisRuntime};
 #[cfg(feature = "tls")]
-use crate::tls::Certificate;
+use crate::tls::{Certificate, Identity, RedisIdentity};
 use crate::types::RedisResult;
 #[cfg(feature = "tls")]
 use async_native_tls::{TlsConnector, TlsStream};
@@ -19,7 +19,6 @@ use async_std::net::TcpStream;
 use async_std::os::unix::net::UnixStream;
 use async_trait::async_trait;
 use futures_util::ready;
-use native_tls::Certificate;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 pin_project_lite::pin_project! {
@@ -158,6 +157,7 @@ impl RedisRuntime for AsyncStd {
         socket_addr: SocketAddr,
         insecure: bool,
         ca_cert: Option<Certificate>,
+        client_identity: Option<RedisIdentity>,
     ) -> RedisResult<Self> {
         let tcp_stream = TcpStream::connect(&socket_addr).await?;
         let tls_connector = if insecure {
@@ -167,8 +167,12 @@ impl RedisRuntime for AsyncStd {
                 .use_sni(false)
         } else {
             let mut tls_connector = TlsConnector::new();
-            if let Some(ca_cert) = ca_cert {
-                tls_connector = tls_connector.add_root_certificate(ca_cert.0);
+            if let Some(cert) = ca_cert {
+                tls_connector = tls_connector.add_root_certificate(cert.0);
+            }
+            if let Some(ident) = client_identity {
+                let id = Identity::from_pkcs8(&*ident.cert_der, &*ident.key)?;
+                tls_connector = tls_connector.identity(id.0);
             }
             tls_connector
         };

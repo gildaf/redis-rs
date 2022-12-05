@@ -53,6 +53,9 @@ pub mod async_std;
 #[cfg(all(not(feature = "tokio-comp"), feature = "async-std-comp"))]
 use ::async_std::net::ToSocketAddrs;
 
+#[cfg(feature = "tls")]
+use crate::tls::RedisIdentity;
+
 /// Enables the tokio compatibility
 #[cfg(feature = "tokio-comp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tokio-comp")))]
@@ -71,6 +74,7 @@ pub(crate) trait RedisRuntime: AsyncStream + Send + Sync + Sized + 'static {
         socket_addr: SocketAddr,
         insecure: bool,
         ca_cert: Option<Certificate>,
+        client_identity: Option<RedisIdentity>,
     ) -> RedisResult<Self>;
 
     /// Performs a UNIX connection
@@ -472,10 +476,23 @@ pub(crate) async fn connect_simple<T: RedisRuntime>(
             port,
             insecure,
             ref ca_cert,
+            identity: ref client_identity,
         } => {
-            let socket_addr = get_socket_addrs(host, port).await?;
-            <T>::connect_tcp_tls(host, socket_addr, insecure).await?;
-            <T>::connect_tcp_tls(host, socket_addr, insecure, ca_cert.clone()).await?
+            //ugly but dnslookup cant deal with "localhost"
+            let hhost = if host == "localhost" {
+                "127.0.0.1"
+            } else {
+                host
+            };
+            let socket_addr = get_socket_addrs(hhost, port).await?;
+            <T>::connect_tcp_tls(
+                host,
+                socket_addr,
+                insecure,
+                ca_cert.clone(),
+                client_identity.clone(),
+            )
+            .await?
         }
 
         #[cfg(not(feature = "tls"))]

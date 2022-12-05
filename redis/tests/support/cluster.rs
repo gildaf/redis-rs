@@ -16,9 +16,11 @@ use super::RedisServer;
 
 const LOCALHOST: &str = "127.0.0.1";
 
+#[derive(PartialEq)]
 enum ClusterType {
     Tcp,
     TcpTls,
+    TcpTlsSec,
 }
 
 impl ClusterType {
@@ -30,6 +32,7 @@ impl ClusterType {
         {
             Some("tcp") => ClusterType::Tcp,
             Some("tcp+tls") => ClusterType::TcpTls,
+            Some("tcp+tls+sec") => ClusterType::TcpTlsSec,
             val => {
                 panic!("Unknown server type {:?}", val);
             }
@@ -44,6 +47,14 @@ impl ClusterType {
                 port,
                 insecure: true,
                 ca_cert: None,
+                identity: None,
+            },
+            ClusterType::TcpTlsSec => redis::ConnectionAddr::TcpTls {
+                host: "localhost".into(),
+                port,
+                insecure: false,
+                ca_cert: None,
+                identity: None,
             },
         }
     }
@@ -76,7 +87,9 @@ impl RedisCluster {
 
         let mut is_tls = false;
 
-        if let ClusterType::TcpTls = ClusterType::get_intended() {
+        let cluster_type = ClusterType::get_intended();
+        let is_tls_sec = cluster_type == ClusterType::TcpTlsSec;
+        if cluster_type == ClusterType::TcpTls || cluster_type == ClusterType::TcpTlsSec {
             // Create a shared set of keys in cluster mode
             let tempdir = tempfile::Builder::new()
                 .prefix("redis")
@@ -125,7 +138,7 @@ impl RedisCluster {
                     }
                     cmd.current_dir(tempdir.path());
                     folders.push(tempdir);
-                    addrs.push(format!("127.0.0.1:{}", port));
+                    addrs.push(format!("localhost:{}", port));
                     dbg!(&cmd);
                     cmd.spawn().unwrap()
                 },
@@ -144,7 +157,12 @@ impl RedisCluster {
         }
         cmd.arg("--cluster-yes");
         if is_tls {
-            cmd.arg("--tls").arg("--insecure");
+            cmd.arg("--tls");
+            cmd.arg("--cacert");
+            cmd.arg(tls_paths.unwrap().ca_crt);
+            if !is_tls_sec {
+                cmd.arg("--insecure");
+            };
         }
         let status = dbg!(cmd).status().unwrap();
         assert!(status.success());
@@ -227,7 +245,7 @@ impl TestClusterContext {
             cluster
                 .iter_servers()
                 .map(|server| redis::ConnectionInfo {
-                    addr: server.get_client_addr().clone(),
+                    addr: server.get_client_addr(),
                     redis: Default::default(),
                 })
                 .collect(),

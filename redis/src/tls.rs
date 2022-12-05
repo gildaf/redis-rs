@@ -2,7 +2,10 @@
 
 use std::{error, fmt, result};
 
-use native_tls::{Certificate as NativeCertificate, Error as NativeError};
+use crate::{tls, ErrorKind, RedisError};
+use native_tls::{
+    Certificate as NativeCertificate, Error as NativeError, Identity as NativeIdentity,
+};
 
 /// A typedef of the result-type returned by many methods.
 pub type Result<T> = result::Result<T, Error>;
@@ -79,5 +82,65 @@ impl std::fmt::Debug for Certificate {
         f.debug_tuple("Certificate")
             .field(&self.0.to_der())
             .finish()
+    }
+}
+
+/// empty wrapper for TLS identity
+#[derive(Clone)]
+pub struct RedisIdentity {
+    pub(crate) cert_der: Vec<u8>,
+    pub(crate) key: Vec<u8>,
+}
+
+impl RedisIdentity {
+    /// builder
+    pub fn build(cert_der: Vec<u8>, key: Vec<u8>) -> RedisIdentity {
+        RedisIdentity { cert_der, key }
+    }
+}
+
+impl std::cmp::Eq for RedisIdentity {}
+
+impl std::cmp::PartialEq for RedisIdentity {
+    fn eq(&self, other: &Self) -> bool {
+        self.cert_der == other.cert_der && self.key == other.key
+    }
+}
+
+impl std::fmt::Debug for RedisIdentity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Identity")
+            .field(&self.key)
+            .field(&self.cert_der)
+            .finish()
+    }
+}
+
+#[derive(Clone)]
+/// A TLS identity - composed of a certificate and its signed private key.
+pub struct Identity(pub(crate) NativeIdentity);
+
+impl Identity {
+    /// Parses a DER-formatted X509 certificate.
+    pub fn from_pkcs12(der: &[u8], password: &str) -> Result<Identity> {
+        let ident = NativeIdentity::from_pkcs12(der, password)?;
+        Ok(Identity(ident))
+    }
+
+    /// Parses a PEM-formatted X509 certificate.
+    pub fn from_pkcs8(der: &[u8], key: &[u8]) -> Result<Identity> {
+        let ident = NativeIdentity::from_pkcs8(der, key)?;
+        Ok(Identity(ident))
+    }
+}
+
+#[cfg(feature = "tls")]
+impl From<tls::Error> for RedisError {
+    fn from(tls_err: tls::Error) -> RedisError {
+        RedisError::from((
+            ErrorKind::ExtensionError,
+            "TLS Error",
+            format!("{}", tls_err),
+        ))
     }
 }
