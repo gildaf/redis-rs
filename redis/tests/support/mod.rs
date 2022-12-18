@@ -617,7 +617,7 @@ fn write_cert_conf_file(path: &PathBuf) -> io::Result<()> {
     let text = r#"
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
-keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyCertSign
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
 extendedKeyUsage=serverAuth,clientAuth
 subjectAltName = @alt_names
 

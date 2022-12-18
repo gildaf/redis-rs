@@ -1,5 +1,6 @@
 use crate::cluster::ClusterConnection;
 use crate::connection::{ConnectionAddr, ConnectionInfo, IntoConnectionInfo};
+use crate::tls::{RedisIdentity, Certificate};
 use crate::types::{ErrorKind, RedisError, RedisResult};
 
 /// Redis cluster specific parameters.
@@ -8,6 +9,10 @@ pub(crate) struct ClusterParams {
     pub(crate) password: Option<String>,
     pub(crate) username: Option<String>,
     pub(crate) read_from_replicas: bool,
+    #[cfg(feature = "tls")]
+    pub(crate) ca_cert: Option<Certificate>,
+    #[cfg(feature = "tls")]
+    pub(crate) identity: Option<RedisIdentity>
 }
 
 /// Used to configure and build a [`ClusterClient`].
@@ -65,6 +70,28 @@ impl ClusterClientBuilder {
         } else {
             &None
         };
+        let certificate = if cluster_params.ca_cert.is_none() {
+           match &first_node.addr {
+               ConnectionAddr::TcpTls { ca_cert,.. } => {
+                   cluster_params.ca_cert = (*ca_cert).clone();
+                   &cluster_params.ca_cert
+               },
+               _ => &None
+           }
+        } else {
+            &None
+        };
+        let ident = if cluster_params.identity.is_none() {
+            match &first_node.addr {
+                ConnectionAddr::TcpTls { identity,.. } => {
+                    cluster_params.identity = (*identity).clone();
+                    &cluster_params.identity
+                },
+                _ => &None
+            }
+        } else {
+            &None
+        };
 
         let mut nodes = Vec::with_capacity(initial_nodes.len());
         for node in initial_nodes {
@@ -85,6 +112,27 @@ impl ClusterClientBuilder {
                     ErrorKind::InvalidClientConfig,
                     "Cannot use different username among initial nodes.",
                 )));
+            }
+
+            match node.addr {
+                ConnectionAddr::TcpTls {insecure,ref ca_cert, ref identity,..}=>{
+                    if !insecure{
+                        if certificate.is_some() && ca_cert != certificate {
+                            return Err(RedisError::from((
+                                ErrorKind::InvalidClientConfig,
+                                "Cannot use different certificate among initial nodes.",
+                            )));
+                        }
+
+                        if ident.is_some() && identity != ident {
+                            return Err(RedisError::from((
+                                ErrorKind::InvalidClientConfig,
+                                "Cannot use different identity among initial nodes.",
+                            )));
+                        }
+                    }
+                }
+                _ => {}
             }
 
             nodes.push(node);
