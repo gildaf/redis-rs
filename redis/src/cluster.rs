@@ -823,7 +823,6 @@ fn build_connection_string(host: &str, port: Option<u16>, tls_mode: Option<TlsMo
             format!("rediss://{}/#insecure", host_port)
         }
         Some(TlsMode::Secure) => {
-            host_port = str::replace(&host_port,"127.0.0.1","localhost");
             format!("rediss://{}", host_port)
         },
     }
