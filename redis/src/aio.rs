@@ -478,13 +478,7 @@ pub(crate) async fn connect_simple<T: RedisRuntime>(
             ref ca_cert,
             identity: ref client_identity,
         } => {
-            //ugly but dnslookup cant deal with "localhost"
-            let hhost = if host == "localhost" {
-                "127.0.0.1"
-            } else {
-                host
-            };
-            let socket_addr = get_socket_addrs(hhost, port).await?;
+            let socket_addr = get_socket_addrs(host, port).await?;
             <T>::connect_tcp_tls(
                 host,
                 socket_addr,
@@ -522,13 +516,20 @@ async fn get_socket_addrs(host: &str, port: u16) -> RedisResult<SocketAddr> {
     let mut socket_addrs = lookup_host((host, port)).await?;
     #[cfg(all(not(feature = "tokio-comp"), feature = "async-std-comp"))]
     let mut socket_addrs = (host, port).to_socket_addrs().await?;
-    match socket_addrs.next() {
-        Some(socket_addr) => Ok(socket_addr),
-        None => Err(RedisError::from((
-            ErrorKind::InvalidClientConfig,
-            "No address found for host",
-        ))),
-    }
+    let res = loop {
+        if let Some(addr)  = socket_addrs.next() {
+            //if only one ip is mapped we return it, otherwise we return the ipv4 option
+            if addr.is_ipv4() || socket_addrs.size_hint().1.is_none(){
+                break Ok(addr);
+            }
+        }else {
+            break Err(RedisError::from((
+                ErrorKind::InvalidClientConfig,
+                "No address found for host",
+            )));
+        }
+    };
+    res
 }
 
 /// An async abstraction over connections.
