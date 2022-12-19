@@ -813,7 +813,7 @@ fn get_slots(connection: &mut Connection, tls_mode: Option<TlsMode>) -> RedisRes
 }
 
 fn build_connection_string(host: &str, port: Option<u16>, tls_mode: Option<TlsMode>) -> String {
-    let mut host_port = match port {
+    let host_port = match port {
         Some(port) => format!("{}:{}", host, port),
         None => host.to_string(),
     };

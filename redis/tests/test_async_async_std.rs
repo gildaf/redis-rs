@@ -1,3 +1,5 @@
+#[cfg(feature = "async-std")]
+
 use futures::{future, prelude::*};
 
 use crate::support::*;
@@ -7,7 +9,6 @@ use redis::{aio::MultiplexedConnection, RedisResult};
 mod support;
 
 #[test]
-#[cfg(feature = "async-std")]
 fn test_args() {
     let ctx = TestContext::new();
     let connect = ctx.async_connection_async_std();
@@ -33,7 +34,6 @@ fn test_args() {
 }
 
 #[test]
-#[cfg(feature = "async-std")]
 fn test_args_async_std() {
     let ctx = TestContext::new();
     let connect = ctx.async_connection_async_std();
@@ -100,7 +100,6 @@ fn dont_panic_on_closed_multiplexed_connection() {
 }
 
 #[test]
-#[cfg(feature = "async-std")]
 fn test_pipeline_transaction() {
     let ctx = TestContext::new();
     block_on_all_using_async_std(async move {
@@ -171,7 +170,6 @@ fn test_error(con: &MultiplexedConnection) -> impl Future<Output = RedisResult<(
 }
 
 #[test]
-#[cfg(feature = "async-std")]
 fn test_args_multiplexed_connection() {
     let ctx = TestContext::new();
     block_on_all_using_async_std(async move {
@@ -215,7 +213,6 @@ fn test_args_with_errors_multiplexed_connection() {
 }
 
 #[test]
-#[cfg(feature = "async-std")]
 fn test_transaction_multiplexed_connection() {
     let ctx = TestContext::new();
     block_on_all_using_async_std(async move {
@@ -260,7 +257,6 @@ fn test_transaction_multiplexed_connection() {
 
 #[test]
 #[cfg(feature = "script")]
-#[cfg(feature = "async-std")]
 fn test_script() {
     use redis::RedisError;
 

@@ -88,7 +88,6 @@ impl RedisCluster {
         let mut is_tls = false;
 
         let cluster_type = ClusterType::get_intended();
-        let is_tls_sec = cluster_type == ClusterType::TcpTlsSec;
         if cluster_type == ClusterType::TcpTls || cluster_type == ClusterType::TcpTlsSec {
             // Create a shared set of keys in cluster mode
             let tempdir = tempfile::Builder::new()
@@ -138,7 +137,7 @@ impl RedisCluster {
                     }
                     cmd.current_dir(tempdir.path());
                     folders.push(tempdir);
-                    addrs.push(format!("localhost:{}", port));
+                    addrs.push(format!("127.0.0.1:{}", port));
                     dbg!(&cmd);
                     cmd.spawn().unwrap()
                 },
@@ -157,12 +156,7 @@ impl RedisCluster {
         }
         cmd.arg("--cluster-yes");
         if is_tls {
-            cmd.arg("--tls");
-            cmd.arg("--cacert");
-            cmd.arg(tls_paths.unwrap().ca_crt);
-            if !is_tls_sec {
-                cmd.arg("--insecure");
-            };
+            cmd.arg("--tls").arg("--insecure");
         }
         let status = dbg!(cmd).status().unwrap();
         assert!(status.success());
