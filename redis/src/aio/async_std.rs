@@ -10,7 +10,7 @@ use std::{
 
 use crate::aio::{AsyncStream, RedisRuntime};
 #[cfg(feature = "tls")]
-use crate::tls::{Certificate, Identity, RedisIdentity};
+use crate::tls::{Certificate, RedisIdentity};
 use crate::types::RedisResult;
 #[cfg(feature = "tls")]
 use async_native_tls::{TlsConnector, TlsStream};
@@ -19,6 +19,7 @@ use async_std::net::TcpStream;
 use async_std::os::unix::net::UnixStream;
 use async_trait::async_trait;
 use futures_util::ready;
+use native_tls::Identity;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 pin_project_lite::pin_project! {
@@ -172,7 +173,7 @@ impl RedisRuntime for AsyncStd {
             }
             if let Some(ident) = client_identity {
                 let id = Identity::from_pkcs8(&*ident.cert_der, &*ident.key)?;
-                tls_connector = tls_connector.identity(id.0);
+                tls_connector = tls_connector.identity(id);
             }
             tls_connector
         };
