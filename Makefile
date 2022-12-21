@@ -20,7 +20,7 @@ test:
 	@echo "===================================================================="
 	@echo "Testing Connection Type TCP with all features and Secure TLS support"
 	@echo "===================================================================="
-	@REDISRS_SERVER_TYPE=tcp+tls+sec RUST_BACKTRACE=1 cargo test --features tokio-native-tls-comp -- --nocapture --test-threads=1
+	@REDISRS_SERVER_TYPE=tcp+tls+sec cargo test --features tokio-native-tls-comp,cluster -- --nocapture --test-threads=1
 
 	@echo "===================================================================="
 	@echo "Testing Connection Type UNIX"
