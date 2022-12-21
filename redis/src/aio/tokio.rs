@@ -6,6 +6,7 @@ use std::{
     pin::Pin,
     task::{self, Poll},
 };
+use native_tls::Identity;
 
 #[cfg(unix)]
 use tokio::net::UnixStream as UnixStreamTokio;
@@ -18,7 +19,7 @@ use tokio::{
 #[cfg(feature = "tls")]
 use super::TlsConnector;
 #[cfg(feature = "tls")]
-use crate::tls::{Certificate, Identity, RedisIdentity};
+use crate::tls::{Certificate, RedisIdentity};
 
 #[cfg(feature = "tokio-native-tls-comp")]
 use tokio_native_tls::TlsStream;
@@ -118,7 +119,7 @@ impl RedisRuntime for Tokio {
             }
             if let Some(ident) = client_identity {
                 let id = Identity::from_pkcs8(&*ident.cert_der, &*ident.key)?;
-                builder.identity(id.0);
+                builder.identity(id);
             }
             builder.build()?
         }

@@ -4,7 +4,7 @@ use std::{error, fmt, result};
 
 use crate::{tls, ErrorKind, RedisError};
 use native_tls::{
-    Certificate as NativeCertificate, Error as NativeError, Identity as NativeIdentity,
+    Certificate as NativeCertificate, Error as NativeError
 };
 
 /// A typedef of the result-type returned by many methods.
@@ -113,24 +113,6 @@ impl std::fmt::Debug for RedisIdentity {
             .field(&self.key)
             .field(&self.cert_der)
             .finish()
-    }
-}
-
-#[derive(Clone)]
-/// A TLS identity - composed of a certificate and its signed private key.
-pub struct Identity(pub(crate) NativeIdentity);
-
-impl Identity {
-    /// Parses a DER-formatted X509 certificate.
-    pub fn from_pkcs12(der: &[u8], password: &str) -> Result<Identity> {
-        let ident = NativeIdentity::from_pkcs12(der, password)?;
-        Ok(Identity(ident))
-    }
-
-    /// Parses a PEM-formatted X509 certificate.
-    pub fn from_pkcs8(der: &[u8], key: &[u8]) -> Result<Identity> {
-        let ident = NativeIdentity::from_pkcs8(der, key)?;
-        Ok(Identity(ident))
     }
 }
 

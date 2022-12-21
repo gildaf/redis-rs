@@ -19,10 +19,11 @@ use crate::types::HashMap;
 use std::os::unix::net::UnixStream;
 
 #[cfg(feature = "tls")]
-use crate::tls::{Certificate, Identity, RedisIdentity};
+use crate::tls::{Certificate, RedisIdentity};
 
 #[cfg(feature = "tls")]
 use native_tls::{TlsConnector, TlsStream};
+use native_tls::Identity;
 
 static DEFAULT_PORT: u16 = 6379;
 
@@ -425,7 +426,7 @@ impl ActualConnection {
                     }
                     if let Some(ident) = client_identity {
                         let id = Identity::from_pkcs8(&*ident.cert_der, &*ident.key)?;
-                        builder.identity(id.0);
+                        builder.identity(id);
                     }
                     builder.build()?
                 };
