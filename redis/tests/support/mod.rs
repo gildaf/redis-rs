@@ -580,6 +580,8 @@ fn write_ca_conf_file(path: &PathBuf) -> io::Result<()> {
     let text = r#"
 [req]
 x509_extensions=v3_ca
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]
 [v3_ca]
 basicConstraints=critical,CA:TRUE
 keyUsage=critical, keyCertSign
