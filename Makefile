@@ -18,9 +18,9 @@ test:
 	@REDISRS_SERVER_TYPE=tcp+tls cargo test --all-features -- --nocapture --test-threads=1
 
 	@echo "===================================================================="
-	@echo "Testing Connection Type TCP with all features and Secure TLS support"
+	@echo "Testing Connection Type TCP with all features and TLS SEC support"
 	@echo "===================================================================="
-	@REDISRS_SERVER_TYPE=tcp+tls+sec cargo test --features tokio-native-tls-comp,cluster -- --nocapture --test-threads=1
+	@REDISRS_SERVER_TYPE=tcp+tls+sec cargo test --all-features -- --nocapture --test-threads=1
 
 	@echo "===================================================================="
 	@echo "Testing Connection Type UNIX"

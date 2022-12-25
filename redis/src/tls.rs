@@ -3,9 +3,7 @@
 use std::{error, fmt, result};
 
 use crate::{tls, ErrorKind, RedisError};
-use native_tls::{
-    Certificate as NativeCertificate, Error as NativeError
-};
+use native_tls::{Certificate as NativeCertificate, Error as NativeError};
 
 /// A typedef of the result-type returned by many methods.
 pub type Result<T> = result::Result<T, Error>;

@@ -12,8 +12,6 @@ use std::task::{self, Poll};
 
 use combine::{parser::combinator::AnySendSyncPartialState, stream::PointerOffset};
 
-#[cfg(feature = "tokio-comp")]
-use ::tokio::net::lookup_host;
 use ::tokio::{
     io::{AsyncRead, AsyncWrite, AsyncWriteExt},
     sync::{mpsc, oneshot},
@@ -511,25 +509,43 @@ pub(crate) async fn connect_simple<T: RedisRuntime>(
     })
 }
 
+///In case both the tokio and the async-std flag are both turned on, we find the runtime dynamically
+/// and use the current trait to convert the (host,port) to socket address
+#[cfg(all(feature = "tokio-comp", feature = "async-std-comp"))]
+async fn to_socket_addrs_dynamic(
+    host: &str,
+    port: u16,
+) -> io::Result<impl Iterator<Item = SocketAddr>> {
+    let socks: Vec<SocketAddr> = match Runtime::locate() {
+        Runtime::Tokio => ::tokio::net::lookup_host((host, port)).await?.collect(),
+        Runtime::AsyncStd => {
+            use ::async_std::net::ToSocketAddrs;
+            (host, port).to_socket_addrs().await?.collect()
+        }
+    };
+    Ok(socks.into_iter())
+}
+
 async fn get_socket_addrs(host: &str, port: u16) -> RedisResult<SocketAddr> {
-    #[cfg(feature = "tokio-comp")]
-    let mut socket_addrs = lookup_host((host, port)).await?;
+    #[cfg(all(feature = "tokio-comp", not(feature = "async-std-comp")))]
+    let mut socket_addrs = ::tokio::net::lookup_host((host, port)).await?;
     #[cfg(all(not(feature = "tokio-comp"), feature = "async-std-comp"))]
     let mut socket_addrs = (host, port).to_socket_addrs().await?;
-    let res = loop {
-        if let Some(addr)  = socket_addrs.next() {
+    #[cfg(all(feature = "tokio-comp", feature = "async-std-comp"))]
+    let mut socket_addrs = to_socket_addrs_dynamic(host, port).await?;
+    loop {
+        if let Some(addr) = socket_addrs.next() {
             //if only one ip is mapped we return it, otherwise we return the ipv4 option
-            if addr.is_ipv4() || socket_addrs.size_hint().1.is_none(){
+            if addr.is_ipv4() || socket_addrs.size_hint().1.is_none() {
                 break Ok(addr);
             }
-        }else {
+        } else {
             break Err(RedisError::from((
                 ErrorKind::InvalidClientConfig,
                 "No address found for host",
             )));
         }
-    };
-    res
+    }
 }
 
 /// An async abstraction over connections.

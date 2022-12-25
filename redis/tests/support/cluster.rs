@@ -166,7 +166,7 @@ impl RedisCluster {
                 cmd.arg(&tls_paths.clone().unwrap().client_key);
                 cmd.arg("--cacert");
                 cmd.arg(&tls_paths.clone().unwrap().ca_crt);
-            }else {
+            } else {
                 cmd.arg("--insecure");
             }
         }

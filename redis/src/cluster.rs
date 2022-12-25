@@ -332,20 +332,25 @@ impl ClusterConnection {
         let mut connection_info = info.into_connection_info()?;
         connection_info.redis.username = self.username.clone();
         connection_info.redis.password = self.password.clone();
-        match connection_info.addr{
-            ConnectionAddr::TcpTls {ref host,port,insecure,..}=>{
-                    if !insecure{
-                        let tls_addr = ConnectionAddr::TcpTls {
-                            host: host.to_string(),
-                            port: port,
-                            insecure,
-                            ca_cert: self.ca_certificate.clone(),
-                            identity: self.identity.clone()
-                        };
-                        connection_info.addr = tls_addr;
-                    }
+        match connection_info.addr {
+            ConnectionAddr::TcpTls {
+                ref host,
+                port,
+                insecure,
+                ..
+            } => {
+                if !insecure {
+                    let tls_addr = ConnectionAddr::TcpTls {
+                        host: host.to_string(),
+                        port: port,
+                        insecure,
+                        ca_cert: self.ca_certificate.clone(),
+                        identity: self.identity.clone(),
+                    };
+                    connection_info.addr = tls_addr;
+                }
             }
-            _=>{}
+            _ => {}
         }
 
         let mut conn = connect(&connection_info, None)?;
@@ -824,6 +829,6 @@ fn build_connection_string(host: &str, port: Option<u16>, tls_mode: Option<TlsMo
         }
         Some(TlsMode::Secure) => {
             format!("rediss://{}", host_port)
-        },
+        }
     }
 }

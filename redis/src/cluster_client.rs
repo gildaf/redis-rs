@@ -1,6 +1,6 @@
 use crate::cluster::ClusterConnection;
 use crate::connection::{ConnectionAddr, ConnectionInfo, IntoConnectionInfo};
-use crate::tls::{RedisIdentity, Certificate};
+use crate::tls::{Certificate, RedisIdentity};
 use crate::types::{ErrorKind, RedisError, RedisResult};
 
 /// Redis cluster specific parameters.
@@ -12,7 +12,7 @@ pub(crate) struct ClusterParams {
     #[cfg(feature = "tls")]
     pub(crate) ca_cert: Option<Certificate>,
     #[cfg(feature = "tls")]
-    pub(crate) identity: Option<RedisIdentity>
+    pub(crate) identity: Option<RedisIdentity>,
 }
 
 /// Used to configure and build a [`ClusterClient`].
@@ -71,23 +71,23 @@ impl ClusterClientBuilder {
             &None
         };
         let certificate = if cluster_params.ca_cert.is_none() {
-           match &first_node.addr {
-               ConnectionAddr::TcpTls { ca_cert,.. } => {
-                   cluster_params.ca_cert = (*ca_cert).clone();
-                   &cluster_params.ca_cert
-               },
-               _ => &None
-           }
+            match &first_node.addr {
+                ConnectionAddr::TcpTls { ca_cert, .. } => {
+                    cluster_params.ca_cert = (*ca_cert).clone();
+                    &cluster_params.ca_cert
+                }
+                _ => &None,
+            }
         } else {
             &None
         };
         let ident = if cluster_params.identity.is_none() {
             match &first_node.addr {
-                ConnectionAddr::TcpTls { identity,.. } => {
+                ConnectionAddr::TcpTls { identity, .. } => {
                     cluster_params.identity = (*identity).clone();
                     &cluster_params.identity
-                },
-                _ => &None
+                }
+                _ => &None,
             }
         } else {
             &None
@@ -115,8 +115,13 @@ impl ClusterClientBuilder {
             }
 
             match node.addr {
-                ConnectionAddr::TcpTls {insecure,ref ca_cert, ref identity,..}=>{
-                    if !insecure{
+                ConnectionAddr::TcpTls {
+                    insecure,
+                    ref ca_cert,
+                    ref identity,
+                    ..
+                } => {
+                    if !insecure {
                         if certificate.is_some() && ca_cert != certificate {
                             return Err(RedisError::from((
                                 ErrorKind::InvalidClientConfig,

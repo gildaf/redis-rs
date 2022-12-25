@@ -22,8 +22,7 @@ use std::os::unix::net::UnixStream;
 use crate::tls::{Certificate, RedisIdentity};
 
 #[cfg(feature = "tls")]
-use native_tls::{TlsConnector, TlsStream};
-use native_tls::Identity;
+use native_tls::{Identity, TlsConnector, TlsStream};
 
 static DEFAULT_PORT: u16 = 6379;
 

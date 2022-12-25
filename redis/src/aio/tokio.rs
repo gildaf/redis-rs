@@ -1,12 +1,13 @@
 use super::{async_trait, AsyncStream, RedisResult, RedisRuntime, SocketAddr};
 
+#[cfg(feature = "tls")]
+use native_tls::Identity;
 use std::{
     future::Future,
     io,
     pin::Pin,
     task::{self, Poll},
 };
-use native_tls::Identity;
 
 #[cfg(unix)]
 use tokio::net::UnixStream as UnixStreamTokio;

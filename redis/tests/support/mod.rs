@@ -10,9 +10,9 @@ use std::{
 };
 
 use futures::Future;
-use redis::Value;
 #[cfg(feature = "tls")]
 use redis::ConnectionAddr;
+use redis::Value;
 use socket2::{Domain, Socket, Type};
 use tempfile::TempDir;
 
