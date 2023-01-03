@@ -41,8 +41,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::iter::Iterator;
-use std::{fs, thread};
-use std::fs::OpenOptions;
+use std::thread;
 use std::time::Duration;
 
 use rand::{
@@ -65,7 +64,6 @@ pub use crate::cluster_pipeline::{cluster_pipe, ClusterPipeline};
 
 use crate::tls::Certificate;
 use crate::tls::RedisIdentity;
-use std::io::{Result,Write};
 
 /// This is a connection of Redis cluster.
 pub struct ClusterConnection {
@@ -88,17 +86,6 @@ impl ClusterConnection {
         cluster_params: ClusterParams,
         initial_nodes: Vec<ConnectionInfo>,
     ) -> RedisResult<ClusterConnection> {
-
-        let mut file = OpenOptions::new()
-            .write(true)
-            .append(true)
-            .open("/tmp/foo")
-            .unwrap();
-
-        if let Err(e) = writeln!(file, "ClusterConnection! {:?}",&initial_nodes) {
-            eprintln!("Couldn't write to file: {}", e);
-        }
-
         let connection = ClusterConnection {
             connections: RefCell::new(HashMap::new()),
             slots: RefCell::new(SlotMap::new()),
@@ -215,37 +202,13 @@ impl ClusterConnection {
                 }
                 _ => panic!("No reach."),
             };
-            let mut file = OpenOptions::new()
-                .write(true)
-                .append(true)
-                .open("/tmp/foo")
-                .unwrap();
 
-            if let Err(e) = writeln!(file, "INITIAL! {:?}",info.clone()) {
-                eprintln!("Couldn't write to file: {}", e);
-            }
-
-
-            match self.connect(info.clone()) {
-                Ok(mut conn) => {
-                    if conn.check_connection() {
-                        connections.insert(addr, conn);
-                        break;
-                    }
-                },
-                Err(e) => {
-                    if let Err(er) = writeln!(file, "connect error! {} ",e) {
-                        eprintln!("Couldn't write to file: {}", er);
-                    }
+            if let Ok(mut conn) = self.connect(info.clone()) {
+                if conn.check_connection() {
+                    connections.insert(addr, conn);
+                    break;
                 }
-            };
-
-            // if let Ok(mut conn) = self.connect(info.clone()) {
-            //     if conn.check_connection() {
-            //         connections.insert(addr, conn);
-            //         break;
-            //     }
-            // }
+            }
         }
 
         if connections.is_empty() {

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 #[cfg(feature = "tls")]
-use std::fs::{read, File};
+use std::fs::read;
 #[cfg(feature = "tls")]
 use std::io::Read;
 use std::{
@@ -496,6 +496,24 @@ pub fn build_keys_and_certs_for_tls(tempdir: &TempDir) -> TlsFilePaths {
         key_cmd.wait().expect("failed to create key");
     }
 
+    fn convert_key(key: &PathBuf, key8: &PathBuf){
+        //convert to pkcs8
+    process::Command::new("openssl")
+        .arg("pkcs8")
+        .arg("-nocrypt")
+        .arg("-topk8")
+        .arg("-in")
+        .arg(&key)
+        .arg("-out")
+        .arg(&key8)
+        .stdout(process::Stdio::null())
+        .stderr(process::Stdio::null())
+        .spawn()
+        .expect("failed to spawn openssl")
+        .wait()
+        .expect("failed to convert key");
+    }
+
     // Build CA Key
     make_key(&ca_key, 4096);
 
@@ -543,12 +561,22 @@ pub fn build_keys_and_certs_for_tls(tempdir: &TempDir) -> TlsFilePaths {
         &cert_conf,
     );
 
+    let mut ks = client_key.clone().into_os_string();
+    ks.push("8");
+    let client_key8 = PathBuf::from(ks);
+    ks = redis_key.clone().into_os_string();
+    ks.push("8");
+    let redis_key8 = PathBuf::from(ks);
+
+    convert_key(&client_key,&client_key8);
+    convert_key(&redis_key,&redis_key8);
+
     TlsFilePaths {
         redis_crt,
-        redis_key,
+        redis_key: redis_key8,
         ca_crt,
         client_crt,
-        client_key,
+        client_key: client_key8,
     }
 }
 
@@ -561,17 +589,10 @@ pub fn build_sec_entities(
     let ca_cert_ = read(ca_crt).unwrap();
     let ca_cert = Certificate::from_pem(ca_cert_.as_slice()).unwrap();
 
-    let my_cert_ = read(my_crt).unwrap();
-    let my_cert = Certificate::from_pem(my_cert_.as_slice()).unwrap();
+    let tls_key = read(my_key).unwrap();
+    let tls_crt = read(my_crt).unwrap();
+    let ident = RedisIdentity::build(tls_crt, tls_key);
 
-    let mut my_key_file = File::open(my_key).unwrap();
-    let mut my_key_buf = vec![];
-    my_key_file.read_to_end(&mut my_key_buf).unwrap();
-
-    let ident = RedisIdentity::build(
-        my_cert.to_der().expect("failed to create identity"),
-        my_key_buf,
-    );
     (ca_cert, ident)
 }
 
