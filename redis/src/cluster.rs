@@ -88,6 +88,17 @@ impl ClusterConnection {
         cluster_params: ClusterParams,
         initial_nodes: Vec<ConnectionInfo>,
     ) -> RedisResult<ClusterConnection> {
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open("/tmp/foo")
+            .unwrap();
+
+        if let Err(e) = writeln!(file, "ClusterConnection! {:?}",&initial_nodes) {
+            eprintln!("Couldn't write to file: {}", e);
+        }
+
         let connection = ClusterConnection {
             connections: RefCell::new(HashMap::new()),
             slots: RefCell::new(SlotMap::new()),
