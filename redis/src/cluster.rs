@@ -42,6 +42,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::iter::Iterator;
 use std::{fs, thread};
+use std::fs::OpenOptions;
 use std::time::Duration;
 
 use rand::{
@@ -64,6 +65,7 @@ pub use crate::cluster_pipeline::{cluster_pipe, ClusterPipeline};
 
 use crate::tls::Certificate;
 use crate::tls::RedisIdentity;
+use std::io::{Result,Write};
 
 /// This is a connection of Redis cluster.
 pub struct ClusterConnection {
@@ -202,8 +204,16 @@ impl ClusterConnection {
                 }
                 _ => panic!("No reach."),
             };
-            let data = format!("INITIAL! {:?}",info.clone());
-            fs::write("/tmp/foo", data).expect("Unable to write file");
+            let mut file = OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open("/tmp/foo")
+                .unwrap();
+
+            if let Err(e) = writeln!(file, "INITIAL! {:?}",info.clone()) {
+                eprintln!("Couldn't write to file: {}", e);
+            }
+
 
             match self.connect(info.clone()) {
                 Ok(mut conn) => {
@@ -212,8 +222,10 @@ impl ClusterConnection {
                         break;
                     }
                 },
-                Err(e) => { let data = format!("Some data! {} ",e);
-                    fs::write("/tmp/foo", data).expect("Unable to write file");
+                Err(e) => {
+                    if let Err(er) = writeln!(file, "connect error! {} ",e) {
+                        eprintln!("Couldn't write to file: {}", er);
+                    }
                 }
             };
 
