@@ -202,6 +202,8 @@ impl ClusterConnection {
                 }
                 _ => panic!("No reach."),
             };
+            let data = format!("INITIAL! {:?}",info.clone());
+            fs::write("/tmp/foo", data).expect("Unable to write file");
 
             match self.connect(info.clone()) {
                 Ok(mut conn) => {
