@@ -41,7 +41,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::iter::Iterator;
-use std::thread;
+use std::{fs, thread};
 use std::time::Duration;
 
 use rand::{
@@ -203,12 +203,24 @@ impl ClusterConnection {
                 _ => panic!("No reach."),
             };
 
-            if let Ok(mut conn) = self.connect(info.clone()) {
-                if conn.check_connection() {
-                    connections.insert(addr, conn);
-                    break;
+            match self.connect(info.clone()) {
+                Ok(mut conn) => {
+                    if conn.check_connection() {
+                        connections.insert(addr, conn);
+                        break;
+                    }
+                },
+                Err(e) => { let data = format!("Some data! {} ",e);
+                    fs::write("/tmp/foo", data).expect("Unable to write file");
                 }
-            }
+            };
+
+            // if let Ok(mut conn) = self.connect(info.clone()) {
+            //     if conn.check_connection() {
+            //         connections.insert(addr, conn);
+            //         break;
+            //     }
+            // }
         }
 
         if connections.is_empty() {
