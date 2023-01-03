@@ -86,8 +86,8 @@ impl std::fmt::Debug for Certificate {
 /// empty wrapper for TLS identity
 #[derive(Clone)]
 pub struct RedisIdentity {
-    pub(crate) cert_der: Vec<u8>,
-    pub(crate) key: Vec<u8>,
+    pub cert_der: Vec<u8>,
+    pub key: Vec<u8>,
 }
 
 impl RedisIdentity {
