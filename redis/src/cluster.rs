@@ -203,11 +203,16 @@ impl ClusterConnection {
                 _ => panic!("No reach."),
             };
 
-            if let Ok(mut conn) = self.connect(info.clone()) {
-                if conn.check_connection() {
-                    connections.insert(addr, conn);
-                    break;
+            match self.connect(info.clone()) {
+                Ok(mut conn) => {
+                    if conn.check_connection() {
+                        connections.insert(addr, conn);
+                        break;
+                    }else {
+                        println!(" create_initial_connection: check connection failed {:?}",addr);
+                    }
                 }
+                Err(err) => {println!(" create_initial_connection: failed to connect to {:?} : {}",addr,err)}
             }
         }
 
