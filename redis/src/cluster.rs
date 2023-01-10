@@ -62,6 +62,9 @@ use crate::types::{ErrorKind, HashMap, HashSet, RedisError, RedisResult, Value};
 pub use crate::cluster_client::{ClusterClient, ClusterClientBuilder};
 pub use crate::cluster_pipeline::{cluster_pipe, ClusterPipeline};
 
+use crate::tls::Certificate;
+use crate::tls::RedisIdentity;
+
 /// This is a connection of Redis cluster.
 pub struct ClusterConnection {
     initial_nodes: Vec<ConnectionInfo>,
@@ -71,6 +74,8 @@ pub struct ClusterConnection {
     read_from_replicas: bool,
     username: Option<String>,
     password: Option<String>,
+    ca_certificate: Option<Certificate>,
+    identity: Option<RedisIdentity>,
     read_timeout: RefCell<Option<Duration>>,
     write_timeout: RefCell<Option<Duration>>,
     tls: Option<TlsMode>,
@@ -88,6 +93,8 @@ impl ClusterConnection {
             read_from_replicas: cluster_params.read_from_replicas,
             username: cluster_params.username,
             password: cluster_params.password,
+            ca_certificate: cluster_params.ca_cert,
+            identity: cluster_params.identity,
             read_timeout: RefCell::new(None),
             write_timeout: RefCell::new(None),
             #[cfg(feature = "tls")]
@@ -98,11 +105,9 @@ impl ClusterConnection {
                     // TODO: Maybe should run through whole list and make sure they're all matching?
                     match &initial_nodes.get(0).unwrap().addr {
                         ConnectionAddr::Tcp(_, _) => None,
-                        ConnectionAddr::TcpTls {
-                            host: _,
-                            port: _,
-                            insecure,
-                        } => Some(TlsMode::from_insecure_flag(*insecure)),
+                        ConnectionAddr::TcpTls { insecure, .. } => {
+                            Some(TlsMode::from_insecure_flag(*insecure))
+                        }
                         _ => None,
                     }
                 }
@@ -190,6 +195,7 @@ impl ClusterConnection {
                     ref host,
                     port,
                     insecure,
+                    ..
                 } => {
                     let tls_mode = TlsMode::from_insecure_flag(insecure);
                     build_connection_string(host, Some(port), Some(tls_mode))
@@ -197,11 +203,16 @@ impl ClusterConnection {
                 _ => panic!("No reach."),
             };
 
-            if let Ok(mut conn) = self.connect(info.clone()) {
-                if conn.check_connection() {
-                    connections.insert(addr, conn);
-                    break;
+            match self.connect(info.clone()) {
+                Ok(mut conn) => {
+                    if conn.check_connection() {
+                        connections.insert(addr, conn);
+                        break;
+                    }else {
+                        println!(" create_initial_connection: check connection failed {:?}",addr);
+                    }
                 }
+                Err(err) => {println!(" create_initial_connection: failed to connect to {:?} : {}",addr,err)}
             }
         }
 
@@ -326,6 +337,26 @@ impl ClusterConnection {
         let mut connection_info = info.into_connection_info()?;
         connection_info.redis.username = self.username.clone();
         connection_info.redis.password = self.password.clone();
+        match connection_info.addr {
+            ConnectionAddr::TcpTls {
+                ref host,
+                port,
+                insecure,
+                ..
+            } => {
+                if !insecure {
+                    let tls_addr = ConnectionAddr::TcpTls {
+                        host: host.to_string(),
+                        port: port,
+                        insecure,
+                        ca_cert: self.ca_certificate.clone(),
+                        identity: self.identity.clone(),
+                    };
+                    connection_info.addr = tls_addr;
+                }
+            }
+            _ => {}
+        }
 
         let mut conn = connect(&connection_info, None)?;
         if self.read_from_replicas {
@@ -801,6 +832,8 @@ fn build_connection_string(host: &str, port: Option<u16>, tls_mode: Option<TlsMo
         Some(TlsMode::Insecure) => {
             format!("rediss://{}/#insecure", host_port)
         }
-        Some(TlsMode::Secure) => format!("rediss://{}", host_port),
+        Some(TlsMode::Secure) => {
+            format!("rediss://{}", host_port)
+        }
     }
 }

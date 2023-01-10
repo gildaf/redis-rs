@@ -1,3 +1,4 @@
+#[cfg(feature = "async-std")]
 use futures::{future, prelude::*};
 
 use crate::support::*;
@@ -57,6 +58,7 @@ fn test_args_async_std() {
 }
 
 #[test]
+#[cfg(feature = "async-std")]
 fn dont_panic_on_closed_multiplexed_connection() {
     let ctx = TestContext::new();
     let connect = ctx.multiplexed_async_connection_async_std();
